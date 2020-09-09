@@ -1,0 +1,816 @@
+---
+title: "Red Wine Quality Exploration"
+author: "Holly Moore"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    # theme of html document
+    # theme of code highlight                                 
+    # table of contents
+    theme       : cosmo            # "default", "cerulean", "journal",
+                                    # "flatly", "readable", "spacelab",
+                                    # "united", "cosmo", "lumen", "paper", 
+                                    # "sandstone", "simplex", "yeti"
+    highlight   : tango          # "default", "tango", "pygments",
+                                    # "kate",  "monochrome", "espresso",
+                                    # "zenburn", "haddock", "textmate"
+    toc         : true              # get table of content
+    toc_depth   : 3
+    toc_float   : true
+    code_folding: hide
+    number_sections: yes
+    fig_caption: yes
+    df_print    : paged
+
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using in your analysis in this code
+# chunk.
+
+# install.packages("knitr", dependencies = T)
+# install.packages("dplyr", dependencies = T)
+# install.packages("ggplot2", dependencies = T) 
+# install.packages("gridExtra", dependencies = T)
+# install.packages("ggcorrplot", dependencies = T)
+# install.packages("PerformanceAnalytics", dependencies = T)
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk. This
+# prevents the code from displaying in the knitted HTML output. You should set
+# echo=FALSE for all code chunks in your file, unless it makes sense for your
+# report to show the code that generated a particular plot.
+
+# The other parameters for "message" and "warning" should also be set to FALSE
+# for other code chunks once you have verified that each plot comes out as you
+# want it to. This will clean up the flow of your report.
+
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(ggcorrplot)
+library(PerformanceAnalytics)
+
+# knitr: Suppress code/messages/warnings 
+#        Set default plot options and center them
+knitr::opts_chunk$set(fig.width=9,fig.height=5,fig.path='Figs/',
+                      fig.align='center',tidy=TRUE,
+                      echo=FALSE,warning=FALSE,message=FALSE)
+
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Load_the_Data}
+# Load the Data
+pf <- read.csv('wineQualityReds.csv')
+```
+
+The dataset used in this exploration contains 1,599 red wines. It has 11 
+variables on the chemical properties of the wines. A minimum of three wine 
+experts rated the quality of each wine, and they provided a rating between 
+0 and 10 (0 being very bad, and 10 excellent). We will explore which chemical 
+properties influence the quality of red wines.
+
+# Univariated Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Structure}
+#glimpse(pf)
+dim(pf)
+str(pf)
+```
+
+Above, struture of the dataset
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Summary}
+summary(pf)
+```
+
+Above: summary of the dataset. The dataset contains 1599 rows and 13 columns. 
+The first column labeled 'X' is simply row numbers, and I have chosen to 
+exclude it from our dataset.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Remove_colX}
+pf <- subset(pf, select = -c(X))
+names(pf)
+```
+
+That leaves us with 12 variables to explore and 1599 observations.
+
+## Plot variables
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Quick_Plot_Functions}
+# We will be plotting a lot of variables. I decided to write a couple of 
+# funtions to produce simple 1 variable plots. This will speed up this process 
+# by eliminate repetitive code. I could have added nice color, but the 
+# intructions say these should be quick and dirty.
+
+f_ggplot1 <- function(fvariable, fmin, fmax, fstep, flabel, fbin)
+  ggplot(aes(x = fvariable), data = pf) +
+  #geom_histogram(binwidth = fbin, color = 'black', fill = '#C0C0C0') +
+  geom_histogram(binwidth = fbin) +
+  xlab(flabel) +
+  scale_x_continuous(breaks = seq(fmin,fmax,fstep)) 
+
+f_log_ggplot1 <- function(fvariable, fmin, fmax, fstep, flabel, fbin)
+  ggplot(aes(x = fvariable), data = pf) +
+  #geom_histogram(binwidth = fbin, color = 'black', fill = '#606060') +
+  geom_histogram(binwidth = fbin) +
+  labs(x=flabel) +
+  xlab(flabel) +
+  scale_x_log10(breaks = seq(fmin, fmax, fstep))
+```
+
+### Acidity Levels (Fixed, Volatile, & Citric)
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Acidity}
+pfa <- f_ggplot1(pf$fixed.acidity, 0, 16, 0.5, 'fixed.acidity', 0.5)
+pva <- f_ggplot1(pf$volatile.acidity, 0, 1.75, 0.1, 'volatile.acidity', 0.05)
+pca <- f_ggplot1(pf$citric.acid, 0, 1, 0.05, 'citric.acid', 0.01)
+
+pfa
+summary(pf$fixed.acidity)
+pva
+summary(pf$volatile.acidity)
+pca
+summary(pf$citric.acid)
+
+grid.arrange(pfa, pva, pca, ncol = 1) #comparison of all 3 together
+```
+
+Looking at the acidity levels... 
+
+Fixed acidity ranges from 4.6 to 15.9. It has a reasonably normal distribution, 
+skewed slightly right, with a median 7.9 and mean of 8.32.
+
+Volatile acidity ranges from .12 to 1.58. The distribution is also fairly 
+normal, would be considered bimodal with peaks at 0.4 and 0.6, and 
+slightly skewed right. The median and the mean are almost the same 
+(median 0.52, mean 0.5278).
+
+Citric acid ranges from 0 to 1, with most observations falling at 
+zero, and another peak at 0.49. There is minimal citric acid in red wine.
+
+### Residual Sugar Level
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Sugar}
+f_ggplot1(pf$residual.sugar, 0.9, 15.5, 1, 'residual.sugar', 0.5)
+f_log_ggplot1(pf$residual.sugar, 0, 15, 1, 'residual.sugar (scale log10)', .05)
+
+summary(pf$residual.sugar)
+```
+
+Residual sugar levels range from 0.9 to 15.5, with a median 2.2 and a mean of 
+2.539. The distribution is heavily skewed right, with most observations 
+falling under 3. Since we have a very long tail, the bottom graph is 
+transformed using a log scale 10 on the x-axis to get a better look.
+
+### Chloride level
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Chloride}
+f_ggplot1(pf$chlorides, 0.012, 0.611, 0.1, 'chlorides', .02)
+f_log_ggplot1(pf$chlorides, 0.012, 0.611, 0.05, 'chlorides (scale log10)', .05)
+
+summary(pf$chlorides)
+```
+
+The Chloride levels range from 0.012 to 0.611 and are heavily skewed right, 
+with 75% of the observations at or below 0.09. Since we have a long tail, the 
+bottom graph (scale x log 10), zooms in so we can see what is going on. On 
+the transformed plot (excluding observations above 0.20), the distribution 
+appears normal.
+
+### Free Sulfur Dioxide Levels
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Free_Sulfur}
+fsd <- 'free.sulfur.dioxide'
+
+f_ggplot1(pf$free.sulfur.dioxide, 0, 73, 5, fsd, 2)
+f_log_ggplot1(pf$free.sulfur.dioxide, 0, 73, 5, fsd, 0.03)
+
+summary(pf$free.sulfur.dioxide)
+table(pf$free.sulfur.dioxide)
+```
+
+Free sulfur dioxide has a wide range from 1 to 72, but 75% of observations 
+fall at 21 and below. The median is 14, and the median is 15.87. The 
+distribution is heavily skewed right like many of the other variables we 
+have looked at. Due to the long tail, logscale was used on the x-axis, 
+allowing us to see a sharp peak 6. After seeing the peak at 6, I ran the table 
+command so we could see how many of each number we were dealing with. There 
+are 138 observations with number 6. 
+
+### Total Sulfur Dioxide Levels
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Total_Sulfur}
+tsd <- 'total.sulfur.dioxide'
+
+f_ggplot1(pf$total.sulfur.dioxide, 0, 300, 20, tsd, 5)
+f_log_ggplot1(pf$total.sulfur.dioxide, 0, 300, 20, tsd, .05)
+
+summary(pf$total.sulfur.dioxide)
+```
+
+Total sulfur dioxide has an even wider range, from 6 to 289, but 75% of 
+observations fall at 62 and below. The median is 38, and the median is 46.47. 
+The distribution is heavily skewed right. We used logscale to transform the 
+x-axis, giving us a better look at the data. The transformed data has a 
+normal distribution peaking between 40-50.
+
+### Density
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Total_Density}
+f_ggplot1(pf$density, min(pf$density), max(pf$density), .002, 'density', .0006)
+
+
+summary(pf$density)
+```
+
+The density of wine has a minimal variance range, from 0.9901 to 1.0037 
+(difference of only 0.0136). The minimal variance is not surprising since 
+all wine has the consistency of water, which is 1g/cm3. The distribution is 
+normal with the median and the mean being almost the same (median 0.9967 & 
+mean 0.9968).
+
+### pH Levels
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Total_pH}
+f_ggplot1(pf$pH, min(pf$pH), max(pf$pH), 0.1, 'pH', 0.1)
+
+summary(pf$pH)
+```
+
+The pH levels also have a small variance range, from 2.74 to 4.01 
+(difference of 1.27). The distribution is normal, almost symmetrical, with 
+the median and the mean being almost the same (median 3.310 & mean 3.311).
+
+### Sulphate Levels
+
+```{r echo=FALSE,message=FALSE, warning=FALSE, Univariate_Plots_Total_Sulphates}
+f_ggplot1(pf$sulphates, 0.3, 2, 0.1, 'sulphates', 0.1)
+
+summary(pf$sulphates)
+```
+
+The sulphate levels range from 0.33 to 2.0, but 75% of all observations fall 
+at 0.73 and below. The median is 0.62, and mean 0.6581. The distribution is 
+right-skewed with some outliners on the far left.
+
+### Alcohol Level
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Alcohol}
+f_ggplot1(pf$alcohol, 8, 15, 0.5, 'alcohol', 1/4)
+
+summary(pf$alcohol)
+```
+
+The alcohol level ranges from 8.4 to 14.9. The mean and the median are almost 
+the same (median 10.2, mean 10.42). The distribution is right-skewed with the 
+peak at 9.5. The highest rating of 14.9 looks like an outliner.
+
+### Quality Ratings
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Univariate_Plots_Quality}
+ggplot(aes(x = quality), data = pf) +
+  geom_bar() +
+  scale_x_continuous(breaks = 3:8)
+
+summary(pf$quality)
+table(pf$quality)
+```
+
+The quality rating scale goes from 0 to 10, with 10 being the best. However, in 
+this dataset, our ratings go from 3 to 8 (8 being the best). The distribution is 
+normal, peaking between five & six. Most of the observations are between 5 & 7.
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+This dataset contains 1,599 observations and has twelve variables (11 of which 
+are chemical properties of the wines). The variables are: fixed.acidity, 
+volatile.acidity, citric.acid, residual.sugar, chlorides, free.sulfur.dioxide, 
+total.sulfur.dioxide, density, pH, sulphates, alcohol, and quality. 
+
+### What is/are the main feature(s) of interest in your dataset? 
+The main item of interest is wine quality. We are exploring the chemical 
+properties to determine which ones influence the quality of red wines.
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+
+Since we are interested in red wine quality, we want to locate the variables 
+that affect quality. Right now, I am interested in the variables that correlate 
+with quality. 
+
+### Did you create any new variables from existing variables in the dataset?
+No.
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form 
+of the data? If so, why did you do this?
+
+The dataset came nice and tidy. While making the initial variable plots, 
+adjusting the bin size was about all that needed to be done. And four of the 
+variables (residual.sugar, chlorides, free.sulfur.dioxide, 
+total.sulfur.dioxide) had long tails. In order to zoom in and get a 
+better picture of the distribution, I used scale_x_log10 on the x-axis to 
+transform the data. 
+
+# Bivariate Plots Section
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots}
+# http://jamesmarquezportfolio.com/correlation_matrices_in_r.html
+# http://www.sthda.com/english/wiki/ggcorrplot-visualization-of-a-correlation-
+# matrix-using-ggplot2
+# https://cran.r-project.org/web/packages/ggcorrplot/ggcorrplot.pdf
+# library("PerformanceAnalytics")
+# library(ggcorrplot)
+chart.Correlation(pf, histogram=TRUE, pch=19)
+ggcorrplot(cor(pf), hc.order=TRUE, type='lower', lab = TRUE, insig = "blank", 
+           lab_size=3)
+```
+
+Above, we have two different correlation matrix plots. They make it easy to see 
+the strength of the relationships between the variables. 
+
+In the first matrix plot, the higher the correlation, the bigger the font used 
+for the correlation strength. \
+For fun, I threw in the second matrix plot. In this matrix, the strength of the 
+relationship is represented by color, the darker the shade 
+(either red or purple), the stronger the relationship. 
+
+**Correlations with Quality** \
+Although some of these correlations are relatively weak, they are still listed 
+here.
+Variables with the strongest correlation to quality are: \
+ 0.48 alcohol \
+-0.39 volatile acidity \
+ 0.25 sulphates \
+ 0.23 citric.acid \
+
+As for the relationships between the other supporting variables, there are 
+quite a few interesting correlations we can see (both positive and negative).
+
+**Negative correlations** \
+-0.68 pH vs. fixed.acidity \
+-0.55 volatile.acidity vs. citric.acid \
+-0.54 pH vs. citric.acid \
+-0.50 alcohol vs. density \
+
+**Positive correlations** \
+ 0.67 fixed.acidity vs. citric.acid \
+ 0.67 fixed.acidity vs. density \
+ 0.67 total.sulfur.dioxide vs. free.sulfure.dioxide \
+ 0.37 sulphates vs. chlorides \
+ 0.36 residual.sugar vs. density \
+ 
+I am surprised to see only a few variables correlate to wine quality, I 
+expected more. However, there are still plenty of correlations to explore. 
+
+Now we will plot some of the correlations!
+
+## Negative Correlations
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivarate_Plots_functions}
+# Function that returns geom_point plot with 2 variables
+f_gg_point <- function(fvarY, fvarX, fbin, falpha, fmethod, labelY, labelX)
+  ggplot(pf, aes(y = fvarY, x = fvarX), binwidth = fbin) +
+  geom_point(alpha = falpha) + #example 1/20 sets alpha level 20 per point
+  geom_smooth(se = FALSE, method = fmethod) +
+  xlab(labelX) +
+  ylab(labelY) 
+
+# Noise in conditional means (from lesson 4), smooth the conditional means
+f_gg_line <- function(fvarY, fvarX)
+  ggplot(aes(x = fvarX, y = fvarY), data=pf) +
+  geom_line(stat = 'summary', fun.y = mean)
+
+
+f_gg_smooth <- function(fvarY, fvarX, flimY, flimX, falpha)
+  ggplot(pf, aes(x = fvarX, y = fvarY)) +
+  stat_smooth(methos = 'lm') +
+  scale_x_continuous(lim = c(flimX, quantile(fvarX, .99))) +
+  scale_y_continuous(lim = c(flimY, quantile(fvarY, .99))) +
+  geom_point(alpha = falpha, fill = I('#F79420'), color = I('black'), 
+             shape = 21)
+
+# Function for Quality - create a point plot
+f_quality_point <- function(fvarY, labelY)
+  ggplot(pf, aes(y = fvarY, x = quality)) +
+  geom_point(aes(colour=factor(quality))) +
+  xlab('Quality') +
+  ylab(labelY) 
+
+# Function for Quality - create a boxplot
+f_quality_boxplot <- function(fvarY, labelY)
+  ggplot(pf, aes(y = fvarY, x = factor(quality))) +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=4) +
+  xlab('Quality') +
+  ylab(labelY) 
+
+# Function for Quality - create a jitter plot
+f_quality_jitter <- function(fvarY, labelY, falpha)
+  ggplot(pf, aes(x = quality, y = fvarY, color = factor(quality))) +
+  geom_jitter(alpha = falpha) +
+  xlab('Quality') +
+  ylab(labelY) 
+```
+
+
+### pH vs. Fixed Acidity
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_PH_FA}
+f_gg_point(pf$pH, pf$fixed.acidity, 1, .1, 'lm', 'pH', 'fixed.acidity')
+f_gg_line(pf$pH, pf$fixed.acidity)
+
+cor.test(pf$pH, pf$fixed.acidity)
+summary(pf$pH)
+summary(pf$fixed.acidity)
+```
+
+The variables pH and fixed acidity have the highest negative correlation of 
+all the variables (corr -0.68). The plot shows that as pH increases, the level 
+of fixed acidity decreases. We made a point and line plot, both are interesting
+to look at.
+
+### Volatile Acidity vs. Citric Acid
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_VA_CA}
+f_gg_point(pf$volatile.acidity, pf$citric.acid, 1, .15, 'lm', 
+           'volatile.acidity', 'citric.acid')
+f_gg_smooth(pf$volatile.acidity, pf$citric.acid, .3, 0, .25)
+
+cor.test(pf$volatile.acidity, pf$citric.acid)
+summary(pf$volatile.acidity)
+summary(pf$citric.acid)
+```
+
+These two variables, volatile acidity and citric acid, have the 2nd highest 
+negative correlation (corr -0.55). So, it is not surprising that the plot looks 
+similar to the previous one. As volatile acidity increases, citric acid 
+decreases. On the second plot, we removed the outliners to get a better 
+view of the distribution.
+
+### pH vs. Citric Acid
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_pH_CA}
+f_gg_point(pf$pH, pf$citric.acid, 1, .50, 'lm', 'pH', 'citric.acid')
+f_gg_point(pf$pH, pf$citric.acid, 1, .05, 'lm', 'pH', 'citric.acid')
+f_gg_smooth(pf$pH, pf$citric.acid, 3, 0, .15)
+
+summary(pf$citric.acid)
+summary(pf$pH)
+cor.test(pf$pH, pf$citric.acid)
+```
+
+Above is the last negative correlation we will do for variables outside of 
+quality. Again, as citric acid increases, pH decreases (corr -0.54). We do 
+have an outliner at 1. I made two different plots, one with alpha at .5 and 
+the other with alpha at .05. The plot with .05 makes it easy to see where 
+we have spikes of citric acid. On the final plot, we limited the range, 
+allowing us a better view of the distribution.
+
+## Positive correlations
+
+### Fixed Acidity and Density
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_FixedAcidity&Density}
+f_gg_point(pf$density, pf$fixed.acidity, 1, .25, 'lm', 
+           'density', 'fixed.acidity')
+f_gg_line(pf$density, pf$fixed.acidity)
+
+summary(pf$density)
+summary(pf$fixed.acidity)
+cor.test(pf$density, pf$fixed.acidity)
+```
+
+Above is the first positive correlation we have explored (corr is .67). Making
+it clear to see that as fixed acidity increases, so does density. The line 
+chart does a nice job of showing the positive pattern, while pointing out the
+outliners.
+
+### Free Sulfer Dioxide vs Total Sulfer Dioxide
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_FSD_TSD}
+f_gg_point(pf$free.sulfur.dioxide, pf$total.sulfur.dioxide, 
+           1, .25, 'lm', 'free.sulfur.dioxide', 'total.sulfur.dioxide')
+
+ggplot(pf, aes(y = free.sulfur.dioxide, x = total.sulfur.dioxide)) +
+  geom_point(alpha = .05, position = position_jitter(h = 0)) +
+  geom_smooth(se = FALSE, method = "lm") +
+  xlim(0, 200) +   
+  ylim(0, 60)
+
+cor.test(pf$free.sulfur.dioxide, pf$total.sulfur.dioxide)
+summary(pf$free.sulfur.dioxide)
+summary(pf$total.sulfur.dioxide)
+```
+
+The above plot is funny; it looks like a megaphone. These two variables have a 
+strong correlation (.67), in a three-way tie for the strongest 
+positive correlation in this dataset. Since they are both a form of sulfur 
+dioxide, it is not surprising they have a strong correlation. The second
+plot limits both the x an y axis, giving us a better view of the distribution.
+
+## Correlations with Quality!
+
+### Quality vs Alcohol
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Quality_Alcohol}
+#f_quality_point(pf$alcohol, 'alcohol')
+f_quality_jitter(pf$alcohol, 'alcohol', .25)
+f_quality_boxplot(pf$alcohol, 'alcohol')
+
+cor.test(pf$alcohol, pf$quality)
+print('alcohol summary')
+summary(pf$alcohol) 
+by(pf$alcohol, pf$quality, summary)
+```
+
+We are finally looking at the correlations with quality. This is interesting, 
+but not surprising. The level of alcohol correlates with red wine 
+quality at 0.48. Looking at these plots, you can see the gradual 
+increase in quality as alcohol level increases. It is fun to look at 
+these different plots; the boxplot especially does a great job visualizing the 
+positive correlation. I do notice a slight decrease in alcohol level in the 
+wine rated quality level 5. I do wonder what caused this decrease?
+
+### Quality vs Volatile Acidity
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Quality&VA}
+#f_quality_point(pf$volatile.acidity, 'volatile acidity')
+f_quality_jitter(pf$volatile.acidity, 'volatile acidity', .25)
+f_quality_boxplot(pf$volatile.acidity, 'volatile acidity')
+
+cor.test(pf$volatile.acidity, pf$quality)
+print('volatile.acidity summary')
+summary(pf$volatile.acidity) 
+by(pf$volatile.acidity, pf$quality, summary)
+```
+
+Now we have a negative correlation between red wine quality and volatile 
+acidity (corr -0.39). This is the next highest correlation for quality. 
+On all three plots, you can easily see the negative relationship. As volatile 
+acidity decreases, the quality also decreases. Again, the boxplot does an 
+excellent job of giving a visual on the correlation direction. 
+
+### Quality vs Sulphates
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Quality&Sulphates}
+#f_quality_point(pf$sulphates, 'sulphates')
+f_quality_jitter(pf$sulphates, 'sulphates', .25)
+f_quality_boxplot(pf$sulphates, 'sulphates')
+
+cor.test(pf$sulphates, pf$quality)
+print('sulphates summary')
+summary(pf$sulphates) 
+by(pf$sulphates, pf$quality, summary)
+```
+
+Above is a relatively weak correlation (0.25 for sulphates vs quality), but 
+since our primary interest is quality, I wanted to explore as many variables  
+as possible (that correlate with quality). As expected, with a weak 
+correlation, there is only a slight difference between the levels. But it is 
+a positive correlation, as the sulphates increase, so does the wine's quality.
+I thought it was interesting that the highest quality level (8), has a 
+minimum sulphate level of 0.63, close to the median level for the other 
+quality ratings.
+
+### Quality vs Citric Acid
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Quality&CA}
+#f_quality_point(pf$citric.acid, 'citric acid')
+f_quality_jitter(pf$citric.acid, 'citric acid', .25)
+f_quality_boxplot(pf$citric.acid, 'citric acid')
+
+cor.test(pf$citric.acid, pf$quality) 
+print('citric.acid summary')
+summary(pf$citric.acid) 
+by(pf$citric.acid, pf$quality, summary)
+```
+
+Above is the last and also the lowest quality correlation that we are going to 
+explore. Looking at the first plot, it appears that quality levels 5 and 6 
+contain just about every level of citric acid. However, taking a look at the 
+jitter plot, you can get a better picture. However, the exciting plot here 
+is the boxplot. On the boxplot, you can see an apparent positive correlation 
+between citric acid and quality. As the levels of citric acid increase, so does 
+the quality. I did not expect to see this!
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in 
+the dataset?
+
+We have just finished plotting various positive and negative correlations 
+between variables in the dataset. We used several different plot styles to give 
+a different perspective on the data. We are most interested in red wine quality,
+so we examined 4 different variables against quality. The strongest correlation 
+we found towards quality was with alcohol (the more alcohol, the higher quality 
+of the wine).
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+
+The three highest positive correlations all had corr 0.67. \
+These correlations were: \
+1) fixed acidity vs citric acid \
+2) fixed acidity vs density \
+3) total sulfur dioxide vs free sulfur dioxide \
+The top and the bottom one (fixed acidity vs citric acid and total sulfur 
+dioxide vs free sulfur dioxide) were not surprising since they are 
+both acids and the other both sulfur dioxide.
+
+### What was the strongest relationship you found?
+
+The relationship between pH and fixed acidity has the strongest correlation 
+in the dataset (corr -0.68).
+
+# Multivariate Plots Section
+
+### Fixed acidity vs Density with Quality
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots1}
+ggplot(pf, aes(x = fixed.acidity, y = density)) +
+  #geom_point(alpha = .25) +
+  geom_point(aes(colour=factor(quality)), alpha = .4) +
+# https://stackoverflow.com/questions/29554796/meaning-of-band-width-in-
+# ggplot-geom-smooth-lm
+  geom_smooth(se = FALSE, method = "lm")
+```
+
+I was interested in adding quality to one of the highest non-quality 
+correlations we did. Fixed acidity and density have a positive correlation
+of 0.67. This result was very surprising! As density increases, so does 
+fixed acidity. However, the highest quality rated wines, stay at the bottom
+of the results (the lowest density, the lowest fixed acidity). 
+
+### Citric acid vs pH with Quality
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots2}
+ggplot(aes(citric.acid, pH, color = factor(quality)), data = pf) +
+  geom_jitter(size = 2, alpha = 1/2) +
+  scale_color_brewer(type='qual')
+#  theme_classic()
+```
+
+We used the correlation between pH and citric acid (-0.54) and added quality 
+to it for our second multivariate plot. The result was not helpful. Our 
+top-quality rating of '8' appears at all levels on this chart. It looks like 
+there is no correlation between quality and these two variables.
+
+### Alcohol vs Volatile Acidity with Quality
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots3}
+ggplot(aes(x=volatile.acidity, y=alcohol, color=factor(quality)), data=pf) + 
+    geom_point(alpha = 1) + 
+    scale_color_brewer(type='div', palette=2)
+
+ggplot(aes( alcohol, volatile.acidity,color = factor(quality)), data = pf) +
+  geom_jitter(size = 2, alpha = .5) +
+  scale_color_brewer(type='qual')
+  #theme_light()
+```
+
+Here we have the two variables with the highest correlation with quality 
+and then added quality to them. These results were not surprising as we already
+knew higher quality red wines had higher levels of alcohol and lower levels 
+of volatile acidity. However, they are still interesting to look at in the 
+plots. I could not decide which way I wanted to plot these, with alcohol on 
+the x-axis or on the y-axis, so I did one of each. The first plot turned out to
+be my favorite, so this will be in my final plot section. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, Multivariate_Plots4}
+ggplot(aes(citric.acid, sulphates, color = factor(quality)), data = pf) +
+  geom_jitter(size = 2, alpha = .5) +
+  theme_light()
+```
+
+The remaining two variables we looked at, with correlations to quality, are 
+Sulphates and citric acid. So we used those two variables in this plot and 
+added quality to them. This turned out a little interesting. Because most 
+quality levels are between 5-6, this plot is not very clear. Nevertheless, 
+it is noticeable that quality levels 7 & 8 seem to fall between sulphate levels
+.4 to .8 (roughly). The sulphate outliners drop back down to average quality 
+wine. Citric acid levels do not seem to matter as much as we can see high levels 
+throughout the spread of citric acid. 
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of 
+looking at your feature(s) of interest?
+
+In our plots, we found that high-quality wines contain higher levels of 
+alcohol, sulphates, and citric acid. And lower levels of volatile acidity. 
+
+### Were there any interesting or surprising interactions between features?
+
+Yes, the plot for fixed acidity vs density, with quality as color. It was 
+very interesting to see that as the levels of each climbed, the higher wine
+quality stayed to the bottom (with lower density, and lower fixed acidity).
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+
+No models were made.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
+f_quality_jitter(pf$alcohol, 'Alcohol Level', .3) +
+  ggtitle('       Red Wine Quality by Alcohol Level') +
+  xlab('Quality Level') +
+  theme_light(15)
+```
+
+### Description One
+
+I like the colors on this plot, and I like how you can easily see the quality 
+level rise as the alcohol level increases. The alcohol level was the variable 
+with the highest correlation with quality (corr 0.48). I did find it surprising 
+and disappointing that most of the quality ratings are between 5-7. 95% of the 
+ratings are between 5-6. So, perhaps if our sample size included more wines9, 
+we would have more ratings fall on the scale's low and high end.
+
+### Plot Two
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Two}
+  ggplot(data = pf, aes(y = citric.acid, x = factor(quality), 
+                        color=factor(quality))) +
+  geom_boxplot() +
+  ggtitle('        Citric Acid levels in Red Wine Quality') + 
+  xlab('Quality Level') +
+  ylab('Citric Acid Level') +
+  theme_light(14)
+```
+
+### Description Two
+
+I selected this plot because I found it surprising. The correlation between 
+quality and citric acid was  relatively weak, being 0.23, so I did not expect 
+this boxplot to show a nice steady increase in quality, as the level of citric 
+acid went up. I added some color onto it because I enjoy seeing the color. 
+Even though we have a limited sample size, and the amounts of citric acid 
+are minimal, it appears the level of citric acid used could play a role in the 
+quality produced.
+
+### Plot Three
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_Three}
+ggplot(aes(x=volatile.acidity, y=alcohol, color=factor(quality)), data=pf) + 
+    geom_point(alpha = .70) + 
+    scale_color_brewer(type='div', palette=2) +
+    ggtitle('     Red Wine Quality Level: Alcohol vs Volatile Acidity Levels')+   
+    xlab('Level of Volatile Acidity') +  
+    ylab('Percentage of Alcohol') +
+    theme_light()
+```
+
+### Description Three
+
+I saved this plot for last because it is my favorite. This plot has wine 
+quality along with the two highest correlations to wine quality. Alcohol has 
+a correlation of 0.48, and volatile acidity's correlation is -0.39. I  
+like to see how these two variables come together, matched up with quality. 
+With the greens and pinks, it makes it stand out, higher levels of alcohol 
+along with low levels of volatile acidity equal better red wine quality.  
+
+------
+
+# Reflection
+
+In this dataset, we examined 1,599 different red wines. The goal was to 
+determine which variables contributed to the quality of the wine. I started 
+by spending time looking at each variable individually. 
+
+Then I checked the correlation between the variables. It was surprising to 
+find that the highest correlation was only -0.68. I had expected alcohol level 
+to have a higher correlation, but then I suppose that would make it too easy to 
+produce quality wine. If the alcohol level were the key, wine makers could9 
+increase the alcohol level and be done with it, but nothing is ever that 
+simple. After that, then I spent some time plotting the correlations of 
+interest. I had hoped there would be more variables correlate with quality, but 
+I used what we had. The most surprising plot for me was the correlation between 
+quality and citric acid. It had a very weak correlation, and citric acid levels 
+are very low in wine in general. I did not expect to see much of anything when 
+I plotted these two variables. However, instead, we saw a very definite 
+increase in quality as the citric acid level increased.
+
+In the multivariate plots, we were able to get a look at three variables 
+together. My favorite plot was putting alcohol, volatile acidity, and quality 
+together. I had examined these variables separately, but bringing them together 
+painted a nice picture of red wine quality (higher alcohol levels, along with 
+lower volatile acidity = better red wine quality). 
+
+I selected the smallest dataset to use for this project. Now I wonder how this 
+would have gone had I selected the dataset with a larger sample size. I would 
+have like to see the quality ratings on a larger sample size. I am curious if 
+we would still see 95% of the wines falling between a quality rating of 5-7 
+or getting more variety. Had there been more wines with the highest 
+quality rating, perhaps it would have been easier to determine which chemical 
+properties influence the quality of red wines.
+
+This was my first time using Rstudio, and the options seem endless! I loved 
+exploring different things and seeing all the different types of plots and 
+analyses available in R. 

@@ -1,0 +1,49 @@
+Inside the zip folder include a text file with a list of Web sites, books, forums, blog posts, 
+GitHub repositories etc that you referred to or used in this submission 
+
+
+RESOURCES:
+MAINLY LESSONS EXAMPLES (lessons 3-6) FROM THE COURSE!
+
+I got carried away using R Studio for the first time. I spent almost an entire week looking
+at different options for things online. I got overwhelmed by the options available, and 
+ended up just going back to the lesson material.
+
+But I did visit all of thse webpages, checking out possibilities in R Studio.
+
+OTHER RESOURCES REFERRED TO:
+
+EXAMPLE PROJECTS
+https://s3.amazonaws.com/content.udacity-data.com/courses/ud651/diamondsExample_2016-05.html
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/AtlanticHurricaneTracking.html
+https://s3.amazonaws.com/udacity-hosted-downloads/ud651/GeographyOfAmericanMusic.html
+https://github.com/sagarnildass/Red-Wine-Data-Analysis-by-R/blob/master/codes.R
+
+GENERAL R HELP
+https://brshallo.github.io/r4ds_solutions/03-data-visualization.html
+https://towardsdatascience.com/a-guide-to-data-visualisation-in-r-for-beginners-ef6d41a34174
+https://rstudio.com/resources/cheatsheets/
+
+FUNCTIONS IN R
+https://stackoverflow.com/questions/37540605/writing-a-function-for-ggplot
+
+CORRELATION CHARTS (Looked at many different ideas)
+http://jamesmarquezportfolio.com/correlation_matrices_in_r.html
+http://www.sthda.com/english/wiki/ggcorrplot-visualization-of-a-correlation-matrix-using-ggplot2
+https://cran.r-project.org/web/packages/ggcorrplot/ggcorrplot.pdf
+https://cran.r-project.org/web/packages/ggcorrplot/ggcorrplot.pdf
+
+THEMES
+https://ggplot2.tidyverse.org/reference/ggtheme.html
+
+SMOOTH
+https://stackoverflow.com/questions/29554796/meaning-of-band-width-in-ggplot-geom-smooth-lm
+https://ggplot2.tidyverse.org/reference/geom_smooth.html
+
+COLOUR, factor, brewer, etc...
+https://www.rapidtables.com/web/color/RGB_Color.html
+http://ggplot.yhathq.com/docs/scale_color_brewer.html
+https://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3
+
+MEMISC
+https://gist.github.com/daroczig/84d44ea5d944da6e4c44e1d1c6cba784
